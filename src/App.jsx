@@ -4,7 +4,7 @@ import SampleCard from './components/SampleCard'
 import RecapTable from './components/RecapTable'
 
 const STORAGE_KEY = 'erta_penilaian_ahli'
-const URL_KEY     = 'erta_script_url'
+const SCRIPT_URL  = 'https://script.google.com/macros/s/AKfycby0PqvvPaY1yvj4GeGYcbt2aU48WGW5fO5Ht56Kc6WSliEaVo7r_I90EaA584D-j04r/exec'
 const CRITERIA    = ['akurasi', 'kelengkapan', 'kualitas']
 
 function loadState() {
@@ -35,6 +35,7 @@ export default function App() {
   const [scores,     setScores]     = useState(saved?.scores ?? initScores())
   const [scriptUrl,  setScriptUrl]  = useState(() => localStorage.getItem(URL_KEY) || '')
   const [submitting, setSubmitting] = useState(false)
+  const scriptUrl = SCRIPT_URL
   const [submitMsg,  setSubmitMsg]  = useState(null)
   const [toast,      setToast]      = useState(null)
 
@@ -42,11 +43,7 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ identity, scores }))
   }, [identity, scores])
 
-  useEffect(() => {
-    localStorage.setItem(URL_KEY, scriptUrl)
-  }, [scriptUrl])
-
-  const showToast = (msg) => {
+const showToast = (msg) => {
     setToast(msg)
     setTimeout(() => setToast(null), 2800)
   }
@@ -164,19 +161,6 @@ export default function App() {
           Sistem Tanya-Jawab Laporan Keuangan Berbasis Retrieval-Augmented Generation
         </div>
         <div className="ahli-badge">25 Sampel · 3 Kriteria Penilaian</div>
-      </div>
-
-      {/* Setup: Google Apps Script URL */}
-      <div className="setup-banner">
-        <strong>Google Sheets URL:</strong>
-        <input
-          value={scriptUrl}
-          onChange={e => setScriptUrl(e.target.value)}
-          placeholder="Paste URL Google Apps Script Web App di sini..."
-        />
-        <span className="setup-hint">
-          Lihat <code>CARA_SETUP_GOOGLE_SHEETS.md</code> untuk cara mendapatkan URL ini
-        </span>
       </div>
 
       {/* Identity */}
