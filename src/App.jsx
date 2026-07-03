@@ -3,6 +3,7 @@ import { SAMPLES } from './data/samples'
 
 const STORAGE_KEY = 'fenrir_eval_v2'
 const MODELS = ['FENRIR', 'RoBERTa', 'IndoBERT', 'FinBERT']
+const SCRIT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE'  // ← ganti dengan URL dari Apps Script deploy
 
 function load() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch { return null } }
 
@@ -19,6 +20,22 @@ export default function App() {
   const getStat = (no) => choices[no] ? 'done' : 'empty'
   const done = Object.values(choices).filter(Boolean).length
   const pct = Math.round(done / SAMPLES.length * 100)
+
+  const [submitting, setSubmitting] = useState(false)
+  const [submitMsg, setSubmitMsg] = useState(null)
+
+  const handleSubmit = async () => {
+    if (!identity.nama.trim()) { toastMsg('Isi Nama terlebih dahulu'); return }
+    setSubmitting(true); setSubmitMsg(null)
+    const rows = SAMPLES.map(s => ({ no: s.no, ticker: s.ticker, company: s.company, q: s.q, tipe: s.tierLabel }))
+    try {
+      await fetch(SCRIT_URL, { method: 'POST', body: JSON.stringify({ identity, choices, samples: rows }), headers: { 'Content-Type': 'text/plain' }, mode: 'no-cors' })
+      setSubmitMsg({ ok: true, text: `✓ Terkirim — ${done}/${SAMPLES.length} sampel` })
+      toastMsg('Data terkirim ke Google Sheets ✓')
+    } catch (err) {
+      setSubmitMsg({ ok: false, text: `✗ Gagal: ${err.message}` })
+    } finally { setSubmitting(false) }
+  }
 
   const exportJSON = () => {
     const data = { identity, choices, exportedAt: new Date().toISOString() }
@@ -84,9 +101,11 @@ export default function App() {
       </div>
 
       <div className="export-panel">
-        <button className="btn btn-primary" onClick={exportJSON}>↑ Export JSON</button>
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>{submitting ? 'Mengirim...' : '↑ Simpan ke Google Sheets'}</button>
+        <button className="btn btn-outline" onClick={exportJSON}>↓ Export JSON</button>
         <button className="btn btn-outline" onClick={reset}>✕ Reset</button>
         <span className="ep-status ok" style={{marginLeft:12}}>{done===SAMPLES.length?'✓ Semua dinilai':`${done}/${SAMPLES.length} sampel`}</span>
+        {submitMsg && <span className={`ep-status ${submitMsg.ok?'ok':'err'}`} style={{marginLeft:8}}>{submitMsg.text}</span>}
       </div>
 
       {toast && <div className="toast">{toast}</div>}

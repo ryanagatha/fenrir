@@ -1,5 +1,5 @@
 /**
- * ERTA — Formulir Penilaian Ahli
+ * FENRIR — Formulir Penilaian Bank Risk Analyst
  * Google Apps Script Web App
  *
  * Cara deploy:
@@ -8,7 +8,7 @@
  * 3. Klik Deploy → New deployment → Web App
  *    - Execute as: Me
  *    - Who has access: Anyone
- * 4. Copy URL yang diberikan → paste ke app di Setup Banner
+ * 4. Copy URL → paste ke SCRIT_URL di App.jsx
  */
 
 function doPost(e) {
@@ -19,41 +19,49 @@ function doPost(e) {
     if (!sheet) {
       sheet = ss.insertSheet('Penilaian')
       sheet.appendRow([
-        'Timestamp', 'Nama', 'NIP', 'Jabatan', 'Instansi', 'LamaJabatan', 'Tanggal',
-        'No', 'Ticker', 'Perusahaan', 'Q', 'Tier',
-        'Akurasi_Pemenang', 'Akurasi_Alasan',
-        'Kelengkapan_Pemenang', 'Kelengkapan_Alasan',
-        'Kualitas_Pemenang', 'Kualitas_Alasan',
-        'Total_ERTA', 'Total_Baseline', 'Pemenang', 'Catatan'
+        'Timestamp', 'Nama', 'Jabatan', 'Institusi', 'Pengalaman', 'Tanggal',
+        'No', 'Ticker', 'Perusahaan', 'Q', 'Tipe',
+        'Model_Dipilih'
       ])
       sheet.setFrozenRows(1)
     }
 
     const payload  = JSON.parse(e.postData.contents)
     const identity = payload.identity || {}
-    const rows     = payload.rows     || []
+    const choices  = payload.choices || {}
     const ts       = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
 
-    rows.forEach(r => {
+    // Write one row per sample
+    const SAMPLES = payload.samples || []
+    SAMPLES.forEach(s => {
       sheet.appendRow([
         ts,
-        identity.nama        || '',
-        identity.nip         || '',
-        identity.jabatan     || '',
-        identity.instansi    || '',
-        identity.lamaJabatan || '',
-        identity.tanggal     || '',
-        r.no, r.ticker, r.company, r.q, r.tier,
-        r.akurasi,            r.akurasi_alasan     || '',
-        r.kelengkapan,        r.kelengkapan_alasan || '',
-        r.kualitas,           r.kualitas_alasan    || '',
-        r.erta_wins, r.baseline_wins, r.pemenang,
-        r.catatan || ''
+        identity.nama         || '',
+        identity.jabatan      || '',
+        identity.instansi     || '',
+        identity.lamaJabatan  || '',
+        identity.tanggal      || '',
+        s.no, s.ticker, s.company, s.q, s.tipe,
+        choices[s.no] || ''
       ])
     })
 
+    // Summary sheet
+    let summary = ss.getSheetByName('Ringkasan')
+    if (!summary) {
+      summary = ss.insertSheet('Ringkasan')
+      summary.appendRow(['Timestamp', 'Nama', 'Jabatan', 'Institusi', 'Total', 'FENRIR', 'RoBERTa', 'IndoBERT', 'FinBERT', 'FENRIR %'])
+      summary.setFrozenRows(1)
+    }
+    const fenrir = Object.values(choices).filter(c => c === 'FENRIR').length
+    const roberta = Object.values(choices).filter(c => c === 'RoBERTa').length
+    const indobert = Object.values(choices).filter(c => c === 'IndoBERT').length
+    const finbert = Object.values(choices).filter(c => c === 'FinBERT').length
+    const total = fenrir + roberta + indobert + finbert
+    summary.appendRow([ts, identity.nama, identity.jabatan, identity.instansi, total, fenrir, roberta, indobert, finbert, total > 0 ? (fenrir/total*100).toFixed(1)+'%' : '0%'])
+
     return ContentService
-      .createTextOutput(JSON.stringify({ status: 'ok', saved: rows.length }))
+      .createTextOutput(JSON.stringify({ status: 'ok', saved: SAMPLES.length }))
       .setMimeType(ContentService.MimeType.JSON)
 
   } catch (err) {
@@ -63,9 +71,8 @@ function doPost(e) {
   }
 }
 
-// Test endpoint
 function doGet() {
   return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ready', app: 'ERTA Penilaian Ahli' }))
+    .createTextOutput(JSON.stringify({ status: 'ready', app: 'FENRIR Bank Risk Analyst Evaluation' }))
     .setMimeType(ContentService.MimeType.JSON)
 }
