@@ -8,7 +8,7 @@ const CRITERIA = [
 ]
 
 const OPTIONS = [
-  { value: 'erta',     label: 'ERTA' },
+  { value: 'erta',     label: 'FENRIR' },
   { value: 'baseline', label: 'Baseline' },
   { value: 'sama',     label: 'Remis' },
 ]
@@ -63,7 +63,7 @@ export default function SampleCard({ sample, scores, onChange, id }) {
         <div className="answer-panels">
           <div className="answer-panel">
             <div className="ap-header" onClick={() => setErtaOpen(v => !v)}>
-              <span>▣ JAWABAN SISTEM A — ERTA</span>
+              <span>▣ JAWABAN SISTEM A — FENRIR</span>
               <span className={`ap-toggle ${ertaOpen ? 'open' : ''}`}>▼</span>
             </div>
             {ertaOpen && <div className="ap-body" dangerouslySetInnerHTML={{ __html: sample.ertaAnswer }} />}
@@ -125,7 +125,7 @@ export default function SampleCard({ sample, scores, onChange, id }) {
 
         <div className="conc-row">
           <div className="score-display">
-            <div className="sd-label">KRITERIA ERTA UNGGUL</div>
+            <div className="sd-label">KRITERIA FENRIR UNGGUL</div>
             <span className="sd-val">{ertaWins}</span>
             <span className="sd-denom">/ 3</span>
           </div>
@@ -141,7 +141,7 @@ export default function SampleCard({ sample, scores, onChange, id }) {
             <div style={{ marginTop: 6 }}>
               {overallW ? (
                 <span className="winner-chip" style={{ fontSize: 14, padding: '4px 14px' }}>
-                  {overallW === 'erta' ? 'ERTA' : overallW === 'baseline' ? 'Baseline' : 'Remis'}
+                  {overallW === 'erta' ? 'FENRIR' : overallW === 'baseline' ? 'Baseline' : 'Remis'}
                 </span>
               ) : (
                 <span style={{ color: '#aaa', fontSize: 12 }}>Belum lengkap</span>

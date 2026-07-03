@@ -3,14 +3,6 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/tptptp/',
+  base: '/',
   build: { outDir: 'docs' },
-  server: {
-    fs: {
-      allow: [
-        '.',
-        '/Users/macbook/Documents/apps_tesis/tesis_preparation/data_preparation/data',
-      ],
-    },
-  },
 })
