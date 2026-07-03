@@ -1,24 +1,41 @@
 import { useState, useEffect } from 'react'
 import { SAMPLES } from './data/samples'
 
-const STORAGE_KEY = 'fenrir_eval_v2'
+const STORAGE_KEY = 'fenrir_eval_v3'
 const MODELS = ['FENRIR', 'RoBERTa', 'IndoBERT', 'FinBERT']
-const SCRIT_URL = 'https://script.google.com/macros/s/AKfycbxe_baUVTdMy8-5mhzeklA5GJyVu0KCFqD984aEiMDSu-afJhzyOtF5XfjHGJwmFwG1/exec'
+const SCRIT_URL = 'https://script.google.com/macros/s/AKfycbyNDh9xq2YfnLozBUVlGJi_3MEML-lnUfcmHpkUJQIZQQdtNm2Bks6hkUweCuJcVwjm/exec'
+
+// RAGAS samples are judged on 3 separate criteria; Embedding samples on retrieval accuracy only.
+const CRITERIA_BY_TYPE = {
+  ragas: [
+    { key: 'akurasi', label: 'Akurasi Faktual' },
+    { key: 'kelengkapan', label: 'Kelengkapan Jawaban' },
+    { key: 'kualitas', label: 'Kualitas Bukti' },
+  ],
+  embedding: [
+    { key: 'akurasi_retrieval', label: 'Akurasi Retrieval' },
+  ],
+}
 
 function load() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch { return null } }
+function isSampleDone(s, choices) {
+  const c = choices[s.no] || {}
+  return CRITERIA_BY_TYPE[s.type].every(({ key }) => !!c[key])
+}
 
 export default function App() {
   const saved = load()
   const [identity, setIdentity] = useState(saved?.identity ?? { nama:'', nip:'', jabatan:'', instansi:'', lamaJabatan:'', tanggal:'' })
-  const [choices, setChoices] = useState(saved?.choices ?? Object.fromEntries(SAMPLES.map(s => [s.no, null])))
+  const [choices, setChoices] = useState(saved?.choices ?? Object.fromEntries(SAMPLES.map(s => [s.no, {}])))
   const [toast, setToast] = useState(null)
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify({ identity, choices })) }, [identity, choices])
 
   const toastMsg = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2800) }
   const setId = (f, v) => setIdentity(p => ({ ...p, [f]: v }))
-  const getStat = (no) => choices[no] ? 'done' : 'empty'
-  const done = Object.values(choices).filter(Boolean).length
+  const setChoice = (no, key, val) => setChoices(p => ({ ...p, [no]: { ...(p[no]||{}), [key]: val } }))
+  const getStat = (s) => isSampleDone(s, choices) ? 'done' : 'empty'
+  const done = SAMPLES.filter(s => isSampleDone(s, choices)).length
   const pct = Math.round(done / SAMPLES.length * 100)
 
   const [submitting, setSubmitting] = useState(false)
@@ -27,7 +44,14 @@ export default function App() {
   const handleSubmit = async () => {
     if (!identity.nama.trim()) { toastMsg('Isi Nama terlebih dahulu'); return }
     setSubmitting(true); setSubmitMsg(null)
-    const rows = SAMPLES.map(s => ({ no: s.no, ticker: s.ticker, company: s.company, q: s.q, tipe: s.tierLabel }))
+    const rows = SAMPLES.map(s => {
+      const c = choices[s.no] || {}
+      return {
+        no: s.no, ticker: s.ticker, company: s.company, q: s.q, tipe: s.tierLabel,
+        akurasi: c.akurasi || '', kelengkapan: c.kelengkapan || '', kualitas: c.kualitas || '',
+        akurasi_retrieval: c.akurasi_retrieval || '',
+      }
+    })
     try {
       await fetch(SCRIT_URL, { method: 'POST', body: JSON.stringify({ identity, choices, samples: rows }), headers: { 'Content-Type': 'text/plain' }, mode: 'no-cors' })
       setSubmitMsg({ ok: true, text: `Terkirim — ${done}/${SAMPLES.length} sampel` })
@@ -44,14 +68,14 @@ export default function App() {
     a.download = `fenrir-eval-${identity.nama||'anon'}.json`; a.click(); URL.revokeObjectURL(a.href)
     toastMsg('Diekspor ke JSON')
   }
-  const reset = () => { if (confirm('Hapus semua jawaban?')) { setChoices(Object.fromEntries(SAMPLES.map(s => [s.no, null]))); toastMsg('Direset') } }
+  const reset = () => { if (confirm('Hapus semua jawaban?')) { setChoices(Object.fromEntries(SAMPLES.map(s => [s.no, {}]))); toastMsg('Direset') } }
 
   return (
     <div className="app-wrapper">
       <div className="intro-card">
         <h3>Formulir ini untuk apa?</h3>
         <p>Bank memiliki laporan keuangan yang sangat tebal dan teknis. Untuk membantu mencari informasi di dalamnya secara otomatis, sedang diuji 4 sistem komputer: satu sistem baru yang dirancang khusus untuk laporan keuangan bank, dan tiga sistem pembanding yang sifatnya umum.</p>
-        <p>Di bawah ini ada 25 contoh pertanyaan seputar laporan keuangan sebuah bank. Untuk tiap pertanyaan, keempat sistem menampilkan potongan informasi dan jawaban masing-masing. Tugas Anda: baca keempat jawaban, lalu pilih satu yang menurut Anda paling akurat dan sesuai dengan laporan keuangan aslinya (bisa dicek langsung lewat tombol "Buka Laporan Keuangan" di tiap contoh).</p>
+        <p>Di bawah ini ada 25 contoh pertanyaan seputar laporan keuangan sebuah bank. Untuk 15 contoh pertama (RAGAS), keempat sistem menampilkan potongan informasi dan jawaban masing-masing — nilai tiap sistem dari 3 sisi: <strong>akurasi faktual</strong>, <strong>kelengkapan jawaban</strong>, dan <strong>kualitas bukti</strong> pendukung. Untuk 10 contoh terakhir (Embedding), keempat sistem hanya menampilkan potongan informasi yang berhasil ditemukan — nilai dari sisi <strong>akurasi retrieval</strong> saja, yaitu sistem mana yang paling berhasil menemukan potongan informasi yang relevan (bisa dicek langsung lewat tombol "Buka Laporan Keuangan" di tiap contoh).</p>
         <p>Tidak perlu latar belakang teknis komputer — cukup gunakan penilaian Anda sebagai analis yang terbiasa membaca laporan keuangan bank. Pengisian memakan waktu sekitar 20–30 menit.</p>
       </div>
 
@@ -78,7 +102,7 @@ export default function App() {
         </div>
 
         <div className="petunjuk">
-          <strong>Petunjuk:</strong> Untuk setiap sampel, bandingkan output keempat model (FENRIR, RoBERTa, IndoBERT, FinBERT). Pilih <strong>satu model terbaik</strong> berdasarkan kualitas retrieved context dan jawaban yang dihasilkan. Jawaban tersimpan otomatis.
+          <strong>Petunjuk:</strong> Untuk setiap sampel, bandingkan output keempat model (FENRIR, RoBERTa, IndoBERT, FinBERT). Untuk sampel RAGAS (#1–15), pilih model terbaik untuk masing-masing 3 kriteria: akurasi faktual, kelengkapan jawaban, kualitas bukti. Untuk sampel Embedding (#16–25), pilih model terbaik untuk 1 kriteria: akurasi retrieval. Jawaban tersimpan otomatis.
         </div>
 
         <div className="progress-wrap">
@@ -89,21 +113,21 @@ export default function App() {
 
       <div className="progress-nav">
         <span className="nav-lbl">Sampel:</span>
-        {SAMPLES.map(s => <a key={s.no} href={`#sample-${s.no}`} className={`nav-dot ${getStat(s.no)}`} title={`#${String(s.no).padStart(2,'0')} ${s.ticker} ${s.q}`}>{s.no}</a>)}
+        {SAMPLES.map(s => <a key={s.no} href={`#sample-${s.no}`} className={`nav-dot ${getStat(s)}`} title={`#${String(s.no).padStart(2,'0')} ${s.ticker} ${s.q}`}>{s.no}</a>)}
         <span className="nav-legend">Selesai / Belum</span>
       </div>
 
       <div className="section-header-bar">Lembar Penilaian Per Sampel</div>
 
       {SAMPLES.map(s => (
-        <SampleCard key={s.no} s={s} choice={choices[s.no]} onChoose={m => setChoices(p => ({...p, [s.no]: m}))} />
+        <SampleCard key={s.no} s={s} choice={choices[s.no] || {}} onChoose={(key, m) => setChoice(s.no, key, m)} />
       ))}
 
       <RecapTable choices={choices} />
 
       <div className="declaration-section">
         <div className="section-title">Pernyataan Evaluator</div>
-        <p>Saya menyatakan bahwa penilaian dilakukan secara objektif berdasarkan perbandingan kualitas output keempat model embedding (FENRIR, RoBERTa, IndoBERT, FinBERT) untuk analisis laporan keuangan perbankan Indonesia.</p>
+        <p>Saya menyatakan bahwa penilaian dilakukan secara objektif berdasarkan perbandingan kualitas output keempat model embedding (FENRIR, RoBERTa, IndoBERT, FinBERT) untuk analisis laporan keuangan perbankan Indonesia, dinilai per kriteria (akurasi faktual, kelengkapan jawaban, kualitas bukti untuk sampel RAGAS; akurasi retrieval untuk sampel Embedding).</p>
         <div style={{marginTop:12,fontSize:12,color:'#444'}}>Tanda tangan: ______________</div>
       </div>
 
@@ -130,6 +154,8 @@ function SampleCard({ s, choice, onChoose }) {
   const ctxKey = m => m==='FENRIR'?'fenrir_ctx':m==='RoBERTa'?'roberta_ctx':m==='IndoBERT'?'indobert_ctx':'finbert_ctx'
   const ansKey = m => m==='FENRIR'?'fenrir_answer':m==='RoBERTa'?'roberta_answer':m==='IndoBERT'?'indobert_answer':'finbert_answer'
   const isRagas = s.type === 'ragas'
+  const criteria = CRITERIA_BY_TYPE[s.type]
+  const filledCount = criteria.filter(c => choice[c.key]).length
 
   return (
     <div className="sample-card" id={`sample-${s.no}`}>
@@ -153,63 +179,119 @@ function SampleCard({ s, choice, onChoose }) {
           { m:'RoBERTa', open:robertaOpen, setOpen:setRobertaOpen, tag:'General-Purpose', border:'#666' },
           { m:'IndoBERT', open:indobertOpen, setOpen:setIndoOpen, tag:'Indonesian Language', border:'#888' },
           { m:'FinBERT', open:finbertOpen, setOpen:setFinOpen, tag:'English Finance', border:'#999' },
-        ].map(({m, open, setOpen, tag, border}) => {
-          const sel = choice === m
-          return (
-            <div key={m} className="answer-panel" style={{border:`1px solid ${sel?'#222':'#d8d8d8'}`,borderRadius:2,marginBottom:6,background:sel?'#fafafa':'#fff'}}>
-              <div className="ap-header" onClick={() => setOpen(!open)} style={{background:m==='FENRIR'?'#fafafa':'#fff'}}>
-                <span>{m} <span style={{fontSize:9,color:'#888',fontWeight:400}}>{tag}</span></span>
-                <span className={`ap-toggle ${open?'open':''}`}>{open?'Tutup':'Buka'}</span>
-              </div>
-              {open && (
-                <div className="ap-body">
-                  {isRagas ? (
-                    <>
-                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Retrieved Context</div>
-                      <pre style={{fontSize:11,lineHeight:1.4,whiteSpace:'pre-wrap',fontFamily:'inherit',color:'#444',margin:'0 0 10px',background:'#f9f9f9',padding:8,borderRadius:2}}>{s[ctxKey(m)]}</pre>
-                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Generated Answer</div>
-                      <p style={{fontSize:13,lineHeight:1.6,color:'#1a1a1a',margin:0}} dangerouslySetInnerHTML={{__html: s[ansKey(m)]}} />
-                    </>
-                  ) : (
-                    <>
-                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Top-3 Retrieved Chunks</div>
-                      <pre style={{fontSize:11,lineHeight:1.4,whiteSpace:'pre-wrap',fontFamily:'inherit',color:'#444',margin:0,background:'#f9f9f9',padding:8,borderRadius:2}}>{s[ctxKey(m)]}</pre>
-                    </>
-                  )}
-                </div>
-              )}
-              <div style={{padding:'6px 14px',borderTop:'1px solid #e0e0e0',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <span style={{fontSize:11,color:'#888'}}>{sel?'Dipilih sebagai model terbaik':''}</span>
-                <button className={`winner-radio ${sel?'selected':''}`} onClick={() => onChoose(m)} style={{fontSize:11,padding:'3px 14px',border:'1px solid '+(sel?'#222':'#ccc'),borderRadius:2,background:sel?'#222':'#fff',color:sel?'#fff':'#555',cursor:'pointer',fontWeight:600}}>{sel?'DIPILIH':'Pilih '+m}</button>
-              </div>
+        ].map(({m, open, setOpen, tag, border}) => (
+          <div key={m} className="answer-panel" style={{border:'1px solid #d8d8d8',borderRadius:2,marginBottom:6,background:'#fff'}}>
+            <div className="ap-header" onClick={() => setOpen(!open)} style={{background:m==='FENRIR'?'#fafafa':'#fff'}}>
+              <span>{m} <span style={{fontSize:9,color:'#888',fontWeight:400}}>{tag}</span></span>
+              <span className={`ap-toggle ${open?'open':''}`}>{open?'Tutup':'Buka'}</span>
             </div>
-          )
-        })}
+            {open && (
+              <div className="ap-body">
+                {isRagas ? (
+                  <>
+                    <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Retrieved Context</div>
+                    <pre style={{fontSize:11,lineHeight:1.4,whiteSpace:'pre-wrap',fontFamily:'inherit',color:'#444',margin:'0 0 10px',background:'#f9f9f9',padding:8,borderRadius:2}}>{s[ctxKey(m)]}</pre>
+                    <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Generated Answer</div>
+                    <p style={{fontSize:13,lineHeight:1.6,color:'#1a1a1a',margin:0}} dangerouslySetInnerHTML={{__html: s[ansKey(m)]}} />
+                  </>
+                ) : (
+                  <>
+                    <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Top-3 Retrieved Chunks</div>
+                    <pre style={{fontSize:11,lineHeight:1.4,whiteSpace:'pre-wrap',fontFamily:'inherit',color:'#444',margin:0,background:'#f9f9f9',padding:8,borderRadius:2}}>{s[ctxKey(m)]}</pre>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+
+        <table className="criteria-table" style={{marginTop:10}}>
+          <thead>
+            <tr>
+              <th style={{width:170}}>Kriteria</th>
+              <th>Pilih Model Terbaik</th>
+            </tr>
+          </thead>
+          <tbody>
+            {criteria.map(({key, label}) => {
+              const w = choice[key] || null
+              return (
+                <tr key={key}>
+                  <td>{label}</td>
+                  <td>
+                    <div className="winner-radio-group">
+                      {['FENRIR', 'RoBERTa', 'IndoBERT', 'FinBERT'].map(m => (
+                        <label key={m} className={`winner-radio ${w===m?'selected':''}`}>
+                          <input type="radio" name={`s${s.no}-${key}`} checked={w===m} onChange={() => onChoose(key, m)} />
+                          {m}
+                        </label>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        <div style={{marginTop:6,fontSize:11,color: filledCount===criteria.length ? '#2a7a2a' : '#999'}}>
+          {filledCount===criteria.length ? 'Semua kriteria sampel ini sudah dinilai' : `${filledCount}/${criteria.length} kriteria dinilai`}
+        </div>
       </div>
     </div>
   )
 }
 
 function RecapTable({ choices }) {
-  const counts = {}; for (const m of MODELS) counts[m] = Object.values(choices).filter(c => c === m).length
-  const total = Object.values(choices).filter(Boolean).length
-  const fenrirPct = total > 0 ? (counts['FENRIR'] / total * 100).toFixed(1) : '0'
+  const counts = {}; for (const m of MODELS) counts[m] = 0
+  let totalVotes = 0
+  SAMPLES.forEach(s => {
+    const c = choices[s.no] || {}
+    CRITERIA_BY_TYPE[s.type].forEach(({key}) => { const v = c[key]; if (v) { counts[v]++; totalVotes++ } })
+  })
+  const fenrirPct = totalVotes > 0 ? (counts['FENRIR'] / totalVotes * 100).toFixed(1) : '0'
+  const doneCount = SAMPLES.filter(s => isSampleDone(s, choices)).length
+
+  const cell = (v) => v ? <span style={{display:'inline-block',padding:'2px 8px',border:'1px solid #999',borderRadius:2,fontSize:10,fontWeight:700,background:v==='FENRIR'?'#222':'#fff',color:v==='FENRIR'?'#fff':'#333'}}>{v}</span> : <span style={{color:'#ccc'}}>—</span>
 
   return (
     <div className="recap-section">
       <div className="section-title">Rekap Hasil Penilaian</div>
-      <p style={{fontSize:12,color:'#555',marginTop:4}}>FENRIR dipilih pada <b>{counts['FENRIR']}/{total}</b> sampel (<b>{fenrirPct}%</b>)</p>
+      <p style={{fontSize:12,color:'#555',marginTop:4}}>FENRIR dipilih pada <b>{counts['FENRIR']}/{totalVotes}</b> total penilaian kriteria (<b>{fenrirPct}%</b>)</p>
 
       <table className="recap-table" style={{width:'100%',borderCollapse:'collapse',fontSize:11,marginTop:12}}>
-        <thead><tr style={{borderBottom:'2px solid #333'}}><th style={{padding:'4px 6px',textAlign:'left',fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:.3,color:'#555'}}>No</th><th style={{padding:'4px 6px',textAlign:'left'}}>Ticker</th><th style={{padding:'4px 6px',textAlign:'left'}}>Q</th><th style={{padding:'4px 6px',textAlign:'left'}}>Tipe</th><th style={{padding:'4px 6px',textAlign:'left'}}>Pertanyaan</th><th style={{padding:'4px 6px',textAlign:'center',width:120}}>Model Terbaik</th></tr></thead>
+        <thead><tr style={{borderBottom:'2px solid #333'}}>
+          <th style={{padding:'4px 6px',textAlign:'left',fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:.3,color:'#555'}}>No</th>
+          <th style={{padding:'4px 6px',textAlign:'left'}}>Ticker</th>
+          <th style={{padding:'4px 6px',textAlign:'left'}}>Q</th>
+          <th style={{padding:'4px 6px',textAlign:'left'}}>Tipe</th>
+          <th style={{padding:'4px 6px',textAlign:'center'}}>Akurasi</th>
+          <th style={{padding:'4px 6px',textAlign:'center'}}>Kelengkapan</th>
+          <th style={{padding:'4px 6px',textAlign:'center'}}>Kualitas</th>
+          <th style={{padding:'4px 6px',textAlign:'center'}}>Akurasi Retrieval</th>
+        </tr></thead>
         <tbody>
-          {SAMPLES.map(s => <tr key={s.no} style={{borderBottom:'1px solid #e0e0e0'}}><td style={{padding:'3px 6px',fontWeight:600}}>{s.no}</td><td style={{padding:'3px 6px',fontWeight:600}}>{s.ticker}</td><td style={{padding:'3px 6px'}}>{s.q}</td><td style={{padding:'3px 6px',fontSize:10,color:'#888'}}>{s.tierLabel}</td><td style={{padding:'3px 6px',fontSize:11}}>{s.question.substring(0,50)}…</td><td style={{padding:'3px 6px',textAlign:'center'}}>{choices[s.no]?<span style={{display:'inline-block',padding:'2px 10px',border:'1px solid #999',borderRadius:2,fontSize:11,fontWeight:700,background:choices[s.no]==='FENRIR'?'#222':'#fff',color:choices[s.no]==='FENRIR'?'#fff':'#333'}}>{choices[s.no]}</span>:<span style={{color:'#ccc'}}>—</span>}</td></tr>)}
+          {SAMPLES.map(s => {
+            const c = choices[s.no] || {}
+            return (
+              <tr key={s.no} style={{borderBottom:'1px solid #e0e0e0'}}>
+                <td style={{padding:'3px 6px',fontWeight:600}}>{s.no}</td>
+                <td style={{padding:'3px 6px',fontWeight:600}}>{s.ticker}</td>
+                <td style={{padding:'3px 6px'}}>{s.q}</td>
+                <td style={{padding:'3px 6px',fontSize:10,color:'#888'}}>{s.tierLabel}</td>
+                <td style={{padding:'3px 6px',textAlign:'center'}}>{s.type==='ragas' ? cell(c.akurasi) : ''}</td>
+                <td style={{padding:'3px 6px',textAlign:'center'}}>{s.type==='ragas' ? cell(c.kelengkapan) : ''}</td>
+                <td style={{padding:'3px 6px',textAlign:'center'}}>{s.type==='ragas' ? cell(c.kualitas) : ''}</td>
+                <td style={{padding:'3px 6px',textAlign:'center'}}>{s.type==='embedding' ? cell(c.akurasi_retrieval) : ''}</td>
+              </tr>
+            )
+          })}
         </tbody>
-        <tfoot><tr style={{borderTop:'2px solid #333',fontWeight:700}}><td colSpan={5} style={{padding:'6px'}}>Total</td><td style={{padding:'6px',textAlign:'center'}}>{total}/{SAMPLES.length}</td></tr></tfoot>
+        <tfoot><tr style={{borderTop:'2px solid #333',fontWeight:700}}><td colSpan={4} style={{padding:'6px'}}>Total sampel selesai</td><td colSpan={4} style={{padding:'6px',textAlign:'center'}}>{doneCount}/{SAMPLES.length}</td></tr></tfoot>
       </table>
 
       <div style={{marginTop:16,display:'flex',gap:16}}>
-        {MODELS.map(m => <div key={m} style={{textAlign:'center',padding:'8px 14px',border:`1px solid ${m==='FENRIR'?'#222':'#ddd'}`,borderRadius:2,background:m==='FENRIR'?'#fafafa':'#fff',flex:1}}><div style={{fontSize:20,fontWeight:900,color:m==='FENRIR'?'#111':'#666'}}>{counts[m]}</div><div style={{fontSize:10,color:'#888'}}>{m}</div><div style={{fontSize:11,fontWeight:600}}>{total>0?(counts[m]/total*100).toFixed(1):'0'}%</div></div>)}
+        {MODELS.map(m => <div key={m} style={{textAlign:'center',padding:'8px 14px',border:`1px solid ${m==='FENRIR'?'#222':'#ddd'}`,borderRadius:2,background:m==='FENRIR'?'#fafafa':'#fff',flex:1}}><div style={{fontSize:20,fontWeight:900,color:m==='FENRIR'?'#111':'#666'}}>{counts[m]}</div><div style={{fontSize:10,color:'#888'}}>{m}</div><div style={{fontSize:11,fontWeight:600}}>{totalVotes>0?(counts[m]/totalVotes*100).toFixed(1):'0'}%</div></div>)}
       </div>
     </div>
   )

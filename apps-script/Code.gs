@@ -21,17 +21,16 @@ function doPost(e) {
       sheet.appendRow([
         'Timestamp', 'Nama', 'Jabatan', 'Institusi', 'Pengalaman', 'Tanggal',
         'No', 'Ticker', 'Perusahaan', 'Q', 'Tipe',
-        'Model_Dipilih'
+        'Akurasi_Faktual', 'Kelengkapan_Jawaban', 'Kualitas_Bukti', 'Akurasi_Retrieval'
       ])
       sheet.setFrozenRows(1)
     }
 
     const payload  = JSON.parse(e.postData.contents)
     const identity = payload.identity || {}
-    const choices  = payload.choices || {}
     const ts       = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
 
-    // Write one row per sample
+    // Write one row per sample (each row carries its own per-criterion winners)
     const SAMPLES = payload.samples || []
     SAMPLES.forEach(s => {
       sheet.appendRow([
@@ -42,23 +41,25 @@ function doPost(e) {
         identity.lamaJabatan  || '',
         identity.tanggal      || '',
         s.no, s.ticker, s.company, s.q, s.tipe,
-        choices[s.no] || ''
+        s.akurasi || '', s.kelengkapan || '', s.kualitas || '', s.akurasi_retrieval || ''
       ])
     })
 
-    // Summary sheet
+    // Summary sheet — tally every criterion selection across all samples as one vote
     let summary = ss.getSheetByName('Ringkasan')
     if (!summary) {
       summary = ss.insertSheet('Ringkasan')
       summary.appendRow(['Timestamp', 'Nama', 'Jabatan', 'Institusi', 'Total', 'FENRIR', 'RoBERTa', 'IndoBERT', 'FinBERT', 'FENRIR %'])
       summary.setFrozenRows(1)
     }
-    const fenrir = Object.values(choices).filter(c => c === 'FENRIR').length
-    const roberta = Object.values(choices).filter(c => c === 'RoBERTa').length
-    const indobert = Object.values(choices).filter(c => c === 'IndoBERT').length
-    const finbert = Object.values(choices).filter(c => c === 'FinBERT').length
-    const total = fenrir + roberta + indobert + finbert
-    summary.appendRow([ts, identity.nama, identity.jabatan, identity.instansi, total, fenrir, roberta, indobert, finbert, total > 0 ? (fenrir/total*100).toFixed(1)+'%' : '0%'])
+    const counts = { FENRIR: 0, RoBERTa: 0, IndoBERT: 0, FinBERT: 0 }
+    SAMPLES.forEach(s => {
+      [s.akurasi, s.kelengkapan, s.kualitas, s.akurasi_retrieval].forEach(v => {
+        if (v && counts.hasOwnProperty(v)) counts[v]++
+      })
+    })
+    const total = counts.FENRIR + counts.RoBERTa + counts.IndoBERT + counts.FinBERT
+    summary.appendRow([ts, identity.nama, identity.jabatan, identity.instansi, total, counts.FENRIR, counts.RoBERTa, counts.IndoBERT, counts.FinBERT, total > 0 ? (counts.FENRIR/total*100).toFixed(1)+'%' : '0%'])
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'ok', saved: SAMPLES.length }))
