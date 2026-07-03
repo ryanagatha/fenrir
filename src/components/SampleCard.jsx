@@ -41,7 +41,7 @@ export default function SampleCard({ sample, scores, onChange, id }) {
 
         {pdfUrl && (
           <button className="btn-pdf" onClick={() => setPdfOpen(v => !v)}>
-            📄 {pdfOpen ? 'Tutup' : 'Buka'} Lapkeu
+            {pdfOpen ? 'Tutup' : 'Buka'} Lapkeu
           </button>
         )}
       </div>
@@ -50,8 +50,8 @@ export default function SampleCard({ sample, scores, onChange, id }) {
         <div className="pdf-viewer">
           <div className="pdf-toolbar">
             <span>Laporan Keuangan — {sample.company} ({sample.ticker})</span>
-            <a href={pdfUrl} target="_blank" rel="noreferrer" className="pdf-newtab">↗ Tab Baru</a>
-            <button className="pdf-close" onClick={() => setPdfOpen(false)}>✕ Tutup</button>
+            <a href={pdfUrl} target="_blank" rel="noreferrer" className="pdf-newtab">Tab Baru</a>
+            <button className="pdf-close" onClick={() => setPdfOpen(false)}>Tutup</button>
           </div>
           <iframe src={pdfUrl} title={`Lapkeu ${sample.ticker}`} className="pdf-frame" />
         </div>
@@ -63,16 +63,16 @@ export default function SampleCard({ sample, scores, onChange, id }) {
         <div className="answer-panels">
           <div className="answer-panel">
             <div className="ap-header" onClick={() => setErtaOpen(v => !v)}>
-              <span>▣ JAWABAN SISTEM A — FENRIR</span>
-              <span className={`ap-toggle ${ertaOpen ? 'open' : ''}`}>▼</span>
+              <span>JAWABAN SISTEM A — FENRIR</span>
+              <span className={`ap-toggle ${ertaOpen ? 'open' : ''}`}>{ertaOpen ? 'Tutup' : 'Buka'}</span>
             </div>
             {ertaOpen && <div className="ap-body" dangerouslySetInnerHTML={{ __html: sample.ertaAnswer }} />}
           </div>
 
           <div className="answer-panel">
             <div className="ap-header" onClick={() => setBaseOpen(v => !v)}>
-              <span>▢ JAWABAN SISTEM B — BASELINE</span>
-              <span className={`ap-toggle ${baseOpen ? 'open' : ''}`}>▼</span>
+              <span>JAWABAN SISTEM B — BASELINE</span>
+              <span className={`ap-toggle ${baseOpen ? 'open' : ''}`}>{baseOpen ? 'Tutup' : 'Buka'}</span>
             </div>
             {baseOpen && <div className="ap-body" dangerouslySetInnerHTML={{ __html: sample.baselineAnswer }} />}
           </div>

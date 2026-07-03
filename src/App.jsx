@@ -30,10 +30,10 @@ export default function App() {
     const rows = SAMPLES.map(s => ({ no: s.no, ticker: s.ticker, company: s.company, q: s.q, tipe: s.tierLabel }))
     try {
       await fetch(SCRIT_URL, { method: 'POST', body: JSON.stringify({ identity, choices, samples: rows }), headers: { 'Content-Type': 'text/plain' }, mode: 'no-cors' })
-      setSubmitMsg({ ok: true, text: `✓ Terkirim — ${done}/${SAMPLES.length} sampel` })
-      toastMsg('Data terkirim ke Google Sheets ✓')
+      setSubmitMsg({ ok: true, text: `Terkirim — ${done}/${SAMPLES.length} sampel` })
+      toastMsg('Data terkirim ke Google Sheets')
     } catch (err) {
-      setSubmitMsg({ ok: false, text: `✗ Gagal: ${err.message}` })
+      setSubmitMsg({ ok: false, text: `Gagal: ${err.message}` })
     } finally { setSubmitting(false) }
   }
 
@@ -48,6 +48,13 @@ export default function App() {
 
   return (
     <div className="app-wrapper">
+      <div className="intro-card">
+        <h3>Formulir ini untuk apa?</h3>
+        <p>Bank memiliki laporan keuangan yang sangat tebal dan teknis. Untuk membantu mencari informasi di dalamnya secara otomatis, sedang diuji 4 sistem komputer: satu sistem baru yang dirancang khusus untuk laporan keuangan bank, dan tiga sistem pembanding yang sifatnya umum.</p>
+        <p>Di bawah ini ada 25 contoh pertanyaan seputar laporan keuangan sebuah bank. Untuk tiap pertanyaan, keempat sistem menampilkan potongan informasi dan jawaban masing-masing. Tugas Anda: baca keempat jawaban, lalu pilih satu yang menurut Anda paling akurat dan sesuai dengan laporan keuangan aslinya (bisa dicek langsung lewat tombol "Buka Laporan Keuangan" di tiap contoh).</p>
+        <p>Tidak perlu latar belakang teknis komputer — cukup gunakan penilaian Anda sebagai analis yang terbiasa membaca laporan keuangan bank. Pengisian memakan waktu sekitar 20–30 menit.</p>
+      </div>
+
       <div className="form-header">
         <div className="sub">INSTRUMEN PENELITIAN — FENRIR: Domain-Specific Embedding for RAG Bank Supervision (BMEB 2026)</div>
         <h1>FORMULIR PENILAIAN AHLI — Bank Risk Analyst</h1>
@@ -83,7 +90,7 @@ export default function App() {
       <div className="progress-nav">
         <span className="nav-lbl">Sampel:</span>
         {SAMPLES.map(s => <a key={s.no} href={`#sample-${s.no}`} className={`nav-dot ${getStat(s.no)}`} title={`#${String(s.no).padStart(2,'0')} ${s.ticker} ${s.q}`}>{s.no}</a>)}
-        <span className="nav-legend">● Selesai &nbsp; ○ Belum</span>
+        <span className="nav-legend">Selesai / Belum</span>
       </div>
 
       <div className="section-header-bar">Lembar Penilaian Per Sampel</div>
@@ -101,10 +108,10 @@ export default function App() {
       </div>
 
       <div className="export-panel">
-        <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>{submitting ? 'Mengirim...' : '↑ Simpan ke Google Sheets'}</button>
-        <button className="btn btn-outline" onClick={exportJSON}>↓ Export JSON</button>
-        <button className="btn btn-outline" onClick={reset}>✕ Reset</button>
-        <span className="ep-status ok" style={{marginLeft:12}}>{done===SAMPLES.length?'✓ Semua dinilai':`${done}/${SAMPLES.length} sampel`}</span>
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>{submitting ? 'Mengirim...' : 'Simpan ke Google Sheets'}</button>
+        <button className="btn btn-outline" onClick={exportJSON}>Export JSON</button>
+        <button className="btn btn-outline" onClick={reset}>Reset</button>
+        <span className="ep-status ok" style={{marginLeft:12}}>{done===SAMPLES.length?'Semua dinilai':`${done}/${SAMPLES.length} sampel`}</span>
         {submitMsg && <span className={`ep-status ${submitMsg.ok?'ok':'err'}`} style={{marginLeft:8}}>{submitMsg.text}</span>}
       </div>
 
@@ -132,48 +139,48 @@ function SampleCard({ s, choice, onChoose }) {
         <span className="sample-company">{s.company}</span>
         <span className="sample-q">{s.q}</span>
         <span className="tier-pill">{s.tierLabel}</span>
-        <button className="btn-pdf" onClick={() => setPdf(v => !v)}>📄 {pdf?'Tutup':'Buka'} Lapkeu</button>
+        <button className="btn-pdf" onClick={() => setPdf(v => !v)}>{pdf?'Tutup':'Buka'} Laporan Keuangan</button>
       </div>
 
-      {pdf && <div className="pdf-viewer"><div className="pdf-toolbar"><span>Laporan Keuangan — {s.company} ({s.ticker})</span><a href={`${import.meta.env.BASE_URL}pdf/${s.pdfFile}`} target="_blank" rel="noreferrer" className="pdf-newtab">↗ Tab Baru</a><button className="pdf-close" onClick={()=>setPdf(false)}>✕ Tutup</button></div><iframe src={`${import.meta.env.BASE_URL}pdf/${s.pdfFile}`} title={`Lapkeu ${s.ticker}`} className="pdf-frame" /></div>}
+      {pdf && <div className="pdf-viewer"><div className="pdf-toolbar"><span>Laporan Keuangan — {s.company} ({s.ticker})</span><a href={`${import.meta.env.BASE_URL}pdf/${s.pdfFile}`} target="_blank" rel="noreferrer" className="pdf-newtab">Buka di Tab Baru</a><button className="pdf-close" onClick={()=>setPdf(false)}>Tutup</button></div><iframe src={`${import.meta.env.BASE_URL}pdf/${s.pdfFile}`} title={`Lapkeu ${s.ticker}`} className="pdf-frame" /></div>}
 
       <div className="sample-body">
         <div className="question-box">{s.question}</div>
 
         {/* 4 Model panels — collapsible */}
         {[
-          { m:'FENRIR', open:fenrirOpen, setOpen:setFenrirOpen, symbol:'🐺', tag:'Domain-Specific', border:'#222' },
-          { m:'RoBERTa', open:robertaOpen, setOpen:setRobertaOpen, symbol:'🤖', tag:'General-Purpose', border:'#666' },
-          { m:'IndoBERT', open:indobertOpen, setOpen:setIndoOpen, symbol:'🇮🇩', tag:'Indonesian Language', border:'#888' },
-          { m:'FinBERT', open:finbertOpen, setOpen:setFinOpen, symbol:'💹', tag:'English Finance', border:'#999' },
-        ].map(({m, open, setOpen, symbol, tag, border}) => {
+          { m:'FENRIR', open:fenrirOpen, setOpen:setFenrirOpen, tag:'Domain-Specific', border:'#222' },
+          { m:'RoBERTa', open:robertaOpen, setOpen:setRobertaOpen, tag:'General-Purpose', border:'#666' },
+          { m:'IndoBERT', open:indobertOpen, setOpen:setIndoOpen, tag:'Indonesian Language', border:'#888' },
+          { m:'FinBERT', open:finbertOpen, setOpen:setFinOpen, tag:'English Finance', border:'#999' },
+        ].map(({m, open, setOpen, tag, border}) => {
           const sel = choice === m
           return (
             <div key={m} className="answer-panel" style={{border:`1px solid ${sel?'#222':'#d8d8d8'}`,borderRadius:2,marginBottom:6,background:sel?'#fafafa':'#fff'}}>
               <div className="ap-header" onClick={() => setOpen(!open)} style={{background:m==='FENRIR'?'#fafafa':'#fff'}}>
-                <span>{symbol} {m} <span style={{fontSize:9,color:'#888',fontWeight:400}}>{tag}</span></span>
-                <span className={`ap-toggle ${open?'open':''}`}>▼</span>
+                <span>{m} <span style={{fontSize:9,color:'#888',fontWeight:400}}>{tag}</span></span>
+                <span className={`ap-toggle ${open?'open':''}`}>{open?'Tutup':'Buka'}</span>
               </div>
               {open && (
                 <div className="ap-body">
                   {isRagas ? (
                     <>
-                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>📎 Retrieved Context</div>
+                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Retrieved Context</div>
                       <pre style={{fontSize:11,lineHeight:1.4,whiteSpace:'pre-wrap',fontFamily:'inherit',color:'#444',margin:'0 0 10px',background:'#f9f9f9',padding:8,borderRadius:2}}>{s[ctxKey(m)]}</pre>
-                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>🤖 Generated Answer</div>
+                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Generated Answer</div>
                       <p style={{fontSize:13,lineHeight:1.6,color:'#1a1a1a',margin:0}} dangerouslySetInnerHTML={{__html: s[ansKey(m)]}} />
                     </>
                   ) : (
                     <>
-                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>📎 Top-3 Retrieved Chunks</div>
+                      <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,color:'#888',marginBottom:4}}>Top-3 Retrieved Chunks</div>
                       <pre style={{fontSize:11,lineHeight:1.4,whiteSpace:'pre-wrap',fontFamily:'inherit',color:'#444',margin:0,background:'#f9f9f9',padding:8,borderRadius:2}}>{s[ctxKey(m)]}</pre>
                     </>
                   )}
                 </div>
               )}
               <div style={{padding:'6px 14px',borderTop:'1px solid #e0e0e0',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <span style={{fontSize:11,color:'#888'}}>{sel?'✓ Dipilih sebagai model terbaik':''}</span>
-                <button className={`winner-radio ${sel?'selected':''}`} onClick={() => onChoose(m)} style={{fontSize:11,padding:'3px 14px',border:'1px solid '+(sel?'#222':'#ccc'),borderRadius:2,background:sel?'#222':'#fff',color:sel?'#fff':'#555',cursor:'pointer',fontWeight:600}}>{sel?'✓ DIPILIH':'Pilih '+m}</button>
+                <span style={{fontSize:11,color:'#888'}}>{sel?'Dipilih sebagai model terbaik':''}</span>
+                <button className={`winner-radio ${sel?'selected':''}`} onClick={() => onChoose(m)} style={{fontSize:11,padding:'3px 14px',border:'1px solid '+(sel?'#222':'#ccc'),borderRadius:2,background:sel?'#222':'#fff',color:sel?'#fff':'#555',cursor:'pointer',fontWeight:600}}>{sel?'DIPILIH':'Pilih '+m}</button>
               </div>
             </div>
           )
