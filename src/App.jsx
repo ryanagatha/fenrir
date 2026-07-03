@@ -3,7 +3,7 @@ import { SAMPLES } from './data/samples'
 
 const STORAGE_KEY = 'fenrir_eval_v2'
 const MODELS = ['FENRIR', 'RoBERTa', 'IndoBERT', 'FinBERT']
-const SCRIT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE'  // ← ganti dengan URL dari Apps Script deploy
+const SCRIT_URL = 'https://script.google.com/macros/s/AKfycbxe_baUVTdMy8-5mhzeklA5GJyVu0KCFqD984aEiMDSu-afJhzyOtF5XfjHGJwmFwG1/exec'
 
 function load() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) } catch { return null } }
 
