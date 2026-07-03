@@ -135,7 +135,7 @@ function SampleCard({ s, choice, onChoose }) {
         <button className="btn-pdf" onClick={() => setPdf(v => !v)}>📄 {pdf?'Tutup':'Buka'} Lapkeu</button>
       </div>
 
-      {pdf && <div className="pdf-viewer"><div className="pdf-toolbar"><span>Laporan Keuangan — {s.company} ({s.ticker})</span><a href={`/pdf/${s.pdfFile}`} target="_blank" rel="noreferrer" className="pdf-newtab">↗ Tab Baru</a><button className="pdf-close" onClick={()=>setPdf(false)}>✕ Tutup</button></div><iframe src={`/pdf/${s.pdfFile}`} title={`Lapkeu ${s.ticker}`} className="pdf-frame" /></div>}
+      {pdf && <div className="pdf-viewer"><div className="pdf-toolbar"><span>Laporan Keuangan — {s.company} ({s.ticker})</span><a href={`${import.meta.env.BASE_URL}pdf/${s.pdfFile}`} target="_blank" rel="noreferrer" className="pdf-newtab">↗ Tab Baru</a><button className="pdf-close" onClick={()=>setPdf(false)}>✕ Tutup</button></div><iframe src={`${import.meta.env.BASE_URL}pdf/${s.pdfFile}`} title={`Lapkeu ${s.ticker}`} className="pdf-frame" /></div>}
 
       <div className="sample-body">
         <div className="question-box">{s.question}</div>
